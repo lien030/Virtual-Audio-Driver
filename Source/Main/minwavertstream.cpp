@@ -466,19 +466,18 @@ NTSTATUS CMiniportWaveRTStream::AllocateBufferWithNotification
 {
     PAGED_CODE();
 
-    ULONG ulBufferDurationMs = 0;
-
     if ( (0 == RequestedSize_) || (RequestedSize_ < m_pWfExt->Format.nBlockAlign) )
     { 
         return STATUS_UNSUCCESSFUL; 
     }
     
-    if ((NotificationCount_ == 0) || (RequestedSize_ % NotificationCount_ != 0))
+    RequestedSize_ -= RequestedSize_ % (m_pWfExt->Format.nBlockAlign);
+    const ULONG notificationIntervalMs = VmicNotificationIntervalMs(RequestedSize_,
+        m_pWfExt->Format.nBlockAlign, m_ulDmaMovementRate, NotificationCount_);
+    if (!notificationIntervalMs)
     {
         return STATUS_INVALID_PARAMETER;
     }
-
-    RequestedSize_ -= RequestedSize_ % (m_pWfExt->Format.nBlockAlign);
     
     if (!m_bCapture && (!g_DoNotCreateDataFiles))
     {
@@ -531,8 +530,7 @@ NTSTATUS CMiniportWaveRTStream::AllocateBufferWithNotification
     }
     m_ulNotificationsPerBuffer = NotificationCount_;
     m_ulDmaBufferSize = RequestedSize_;
-    ulBufferDurationMs = (RequestedSize_ * 1000) / m_ulDmaMovementRate;
-    m_ulNotificationIntervalMs = ulBufferDurationMs / NotificationCount_;
+    m_ulNotificationIntervalMs = notificationIntervalMs;
 
     *AudioBufferMdl_ = pBufferMdl;
     *ActualSize_ = RequestedSize_;
@@ -890,18 +888,14 @@ NTSTATUS CMiniportWaveRTStream::GetReadPacket
     // Return next packet number to be read
     *PacketNumber = availablePacketNumber;
 
-    // Compute and return timestamp corresponding to the end of the available packet. In a real hardware
-    // driver, the timestamp would be computed in a driver and hardware specific manner. In this sample
-    // driver, it is extrapolated from the sample driver's internal simulated position correlation
-    // [m_ullLinearPosition @ m_ullDmaTimeStamp] and the sample's internal 64-bit packet counter, subtracting
-    // 1 from the packet counter to compute the time at the start of that last completed packet.
-    ULONGLONG linearPositionOfAvailablePacket = packetCounter * (m_ulDmaBufferSize / m_ulNotificationsPerBuffer);
-    // Need to divide by (1000 * 10000 because m_ulDmaMovementRate is average bytes per sec
+    // GetReadPacket requires the sampling time of the packet's first frame.
+    ULONGLONG linearPositionOfAvailablePacket = (packetCounter - 1) * (m_ulDmaBufferSize / m_ulNotificationsPerBuffer);
     ULONGLONG carryForwardBytes = (hnsElapsedTimeCarryForward * m_ulDmaMovementRate) / 10000000;
     ULONGLONG deltaLinearPosition = ullLinearPosition + carryForwardBytes - linearPositionOfAvailablePacket;
     ULONGLONG deltaTimeInHns = deltaLinearPosition * 10000000 / m_ulDmaMovementRate;
     ULONGLONG timeOfAvailablePacketInHns = ullDmaTimeStamp - deltaTimeInHns;
-    ULONGLONG timeOfAvailablePacketInQpc = timeOfAvailablePacketInHns * m_ullPerformanceCounterFrequency.QuadPart / 10000000;
+    ULONGLONG timeOfAvailablePacketInQpc = VmicHnsToQpc(timeOfAvailablePacketInHns,
+        m_ullPerformanceCounterFrequency.QuadPart);
 
     *PerformanceCounterValue = timeOfAvailablePacketInQpc;
 

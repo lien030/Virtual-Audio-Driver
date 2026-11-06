@@ -36,4 +36,28 @@ int main()
     assert(VmicFormatSupported({192000, 2, 24}));
     assert(!VmicFormatSupported({44100, 2, 32}));
     assert(!VmicFormatSupported({48000, 0, 16}));
+
+    const unsigned long long seconds[] = {0, 60, 184467, 184468, 216000, 30ull * 24 * 3600};
+    const unsigned long long frequencies[] = {3579545, 10000000, 2400000000};
+    for (auto second : seconds)
+        for (auto frequency : frequencies)
+        {
+            assert(VmicHnsToQpc(second * 10000000u, frequency) == second * frequency);
+            assert(VmicHnsToQpc(second * 10000000u + 1234567u, frequency) ==
+                   second * frequency + 1234567ull * frequency / 10000000u);
+        }
+
+    assert(VmicNotificationIntervalMs(1920, 2, 96000, 2) == 10);
+    assert(VmicNotificationIntervalMs(192, 2, 96000, 2) == 1);
+    assert(VmicNotificationIntervalMs(96, 2, 96000, 1) == 1);
+    assert(VmicNotificationIntervalMs(96, 2, 96000, 2) == 0);
+    assert(VmicNotificationIntervalMs(190, 2, 96000, 2) == 0);
+    assert(VmicNotificationIntervalMs(11526, 6, 1152000, 2) == 0);
+    assert(VmicNotificationIntervalMs(11520, 6, 1152000, 2) == 5);
+    assert(VmicNotificationIntervalMs(1920, 2, 96000, 0) == 0);
+    assert(VmicNotificationIntervalMs(1920, 2, 96000, 3) == 0);
+    assert(VmicNotificationIntervalMs(0, 2, 96000, 2) == 0);
+    assert(VmicNotificationIntervalMs(1920, 0, 96000, 2) == 0);
+    assert(VmicNotificationIntervalMs(1920, 2, 0, 2) == 0);
+    assert(VmicNotificationIntervalMs(0xfffffffcu, 2, 96000, 2) == 22369621);
 }

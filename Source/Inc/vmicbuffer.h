@@ -61,3 +61,20 @@ inline unsigned long long VmicElapsedFrames(unsigned long long Elapsed100ns, uns
     *Remainder = static_cast<unsigned int>(numerator % 10000000u);
     return numerator / 10000000u;
 }
+
+inline unsigned long long VmicHnsToQpc(unsigned long long Time100ns, unsigned long long Frequency)
+{
+    // Split absolute time to avoid overflowing after days of system uptime.
+    return (Time100ns / 10000000u) * Frequency + (Time100ns % 10000000u) * Frequency / 10000000u;
+}
+
+inline unsigned int VmicNotificationIntervalMs(unsigned int BufferBytes, unsigned int FrameBytes,
+                                                unsigned int BytesPerSecond, unsigned int Notifications)
+{
+    if ((Notifications != 1 && Notifications != 2) || !FrameBytes || !BytesPerSecond ||
+        BufferBytes % Notifications || (BufferBytes / Notifications) % FrameBytes)
+        return 0;
+    // A zero interval rejects periods below the 1 ms timer tick.
+    return static_cast<unsigned int>(static_cast<unsigned long long>(BufferBytes) * 1000u /
+                                     BytesPerSecond / Notifications);
+}

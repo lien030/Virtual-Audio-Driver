@@ -22,7 +22,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Buffer test compilation failed.' }
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'Buffer self-check failed.' }
-    'PASS: ring-buffer wrap, full/empty, silence, format validation, and 10-minute frame counts.'
+    'PASS: ring-buffer, silence, formats, 10-minute frame counts, QPC conversion, and notification periods.'
+    $streamExe = Join-Path $output 'vmic_stream_test.exe'
+    & (Join-Path $bin 'cl.exe') /nologo /EHsc /W4 /WX /MT (Join-Path $driverRoot 'Tests\vmic_stream_test.cpp') `
+        "/Fe:$streamExe" "/Fo:$output\vmic_stream_test.obj" /link setupapi.lib ksuser.lib
+    if ($LASTEXITCODE -ne 0) { throw 'Stream test compilation failed.' }
+    "Built $streamExe; run it in the Windows test VM with the driver installed."
 } finally {
     $env:Path = $originalPath
     $env:INCLUDE = $originalInclude

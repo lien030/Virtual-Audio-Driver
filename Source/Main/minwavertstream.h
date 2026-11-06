@@ -103,7 +103,7 @@ protected:
     ULONGLONG                   m_hnsElapsedTimeCarryForward;
     ULONGLONG                   m_ullLastDPCTimeStamp;
     ULONGLONG                   m_hnsDPCTimeCarryForward;
-    ULONG                       m_byteDisplacementCarryForward;
+    unsigned int                m_byteDisplacementCarryForward;
     ULONG                       m_ulDmaMovementRate;
     BOOL                        m_bLfxEnabled;
     PBOOL                       m_pbMuted;

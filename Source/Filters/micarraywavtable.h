@@ -1,328 +1,94 @@
 /*++
-
 Copyright (c) Microsoft Corporation All Rights Reserved
-
-Module Name:
-
-    micarraywavtable.h
-
-Abstract:-
-
-    Declaration of wave miniport tables for the mic array.
-
+Declaration of the virtual microphone wave miniport tables.
 --*/
 
 #ifndef _VIRTUALAUDIODRIVER_MICARRAYWAVTABLE_H_
 #define _VIRTUALAUDIODRIVER_MICARRAYWAVTABLE_H_
 
-//
-// Mic array range.
-//
-#define MICARRAY_RAW_CHANNELS                   2       // Channels for raw mode
-#define MICARRAY_DEVICE_MAX_CHANNELS            2       // Max channels overall
-#define MICARRAY_32_BITS_PER_SAMPLE_PCM         32      // 32 Bits Per Sample
-#define MICARRAY_RAW_SAMPLE_RATE                48000   // Raw sample rate
+#define MICARRAY_DEVICE_MAX_CHANNELS 2
+#define MICARRAY_MAX_INPUT_STREAMS 1
 
-//
-// Max # of pin instances.
-//
-#define MICARRAY_MAX_INPUT_STREAMS              1
+#define VMIC_WAVE_FORMAT(rate, bits, channels) \
+    { { sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE), 0, 0, 0, \
+        STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO), STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM), \
+        STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX) }, \
+      { { WAVE_FORMAT_EXTENSIBLE, channels, rate, rate * channels * (bits / 8), \
+          channels * (bits / 8), bits, sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX) }, \
+        bits, channels == 1 ? KSAUDIO_SPEAKER_MONO : KSAUDIO_SPEAKER_STEREO, \
+        STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM) } }
 
-//=============================================================================
-// Extended array of supported device formats.
-//=============================================================================
-static
-KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicArrayPinSupportedDeviceFormats[] =
+static KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicArrayPinSupportedDeviceFormats[] =
 {
-    //------------------------------------------------------------------------
-    // 48 KHz, 32-bit, 2 channels (Stereo)
-    //------------------------------------------------------------------------
-    {
-        {
-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
-            0,
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        {
-            {
-                WAVE_FORMAT_EXTENSIBLE,       // wFormatTag
-                2,                           // nChannels
-                48000,                       // nSamplesPerSec
-                48000 * 2 * 4,               // nAvgBytesPerSec = 48000 * channels * bytes_per_sample
-                2 * 4,                       // nBlockAlign = channels * bytes_per_sample
-                32,                          // wBitsPerSample
-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
-            },
-            32,                              // Samples (wValidBitsPerSample)
-            KSAUDIO_SPEAKER_STEREO,          // dwChannelMask
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
-        }
-    },
+    VMIC_WAVE_FORMAT(48000, 16, 1),
+    VMIC_WAVE_FORMAT(44100, 16, 1),
+    VMIC_WAVE_FORMAT(96000, 24, 1),
+    VMIC_WAVE_FORMAT(192000, 24, 1),
+    VMIC_WAVE_FORMAT(48000, 32, 1),
+    VMIC_WAVE_FORMAT(48000, 16, 2),
+    VMIC_WAVE_FORMAT(44100, 16, 2),
+    VMIC_WAVE_FORMAT(96000, 24, 2),
+    VMIC_WAVE_FORMAT(192000, 24, 2),
+    VMIC_WAVE_FORMAT(48000, 32, 2),
+};
+#undef VMIC_WAVE_FORMAT
 
-    //------------------------------------------------------------------------
-    // 44.1 KHz, 16-bit, 2 channels (Stereo)
-    //------------------------------------------------------------------------
-    {
-        {
-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
-            0,
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        {
-            {
-                WAVE_FORMAT_EXTENSIBLE,
-                2,
-                44100,
-                44100 * 2 * 2,  // nAvgBytesPerSec = 44100 * channels * bytes_per_sample
-                2 * 2,          // nBlockAlign = channels * bytes_per_sample
-                16,
-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
-            },
-            16,                             // wValidBitsPerSample
-            KSAUDIO_SPEAKER_STEREO,
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
-        }
-    },
-
-    //------------------------------------------------------------------------
-    // 48 KHz, 16-bit, 2 channels (Stereo)
-    //------------------------------------------------------------------------
-    {
-        {
-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
-            0,
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        {
-            {
-                WAVE_FORMAT_EXTENSIBLE,
-                2,
-                48000,
-                48000 * 2 * 2, // nAvgBytesPerSec = 48000 * channels * bytes_per_sample
-                2 * 2,         // nBlockAlign = channels * bytes_per_sample
-                16,
-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
-            },
-            16,
-            KSAUDIO_SPEAKER_STEREO,
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
-        }
-    },
-
-    //------------------------------------------------------------------------
-    // 96 KHz, 24-bit, 2 channels (Stereo)
-    //------------------------------------------------------------------------
-    {
-        {
-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
-            0,
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        {
-            {
-                WAVE_FORMAT_EXTENSIBLE,
-                2,
-                96000,
-                96000 * 2 * 3, // nAvgBytesPerSec = 96000 * channels * bytes_per_sample
-                2 * 3,         // nBlockAlign = channels * bytes_per_sample
-                24,
-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
-            },
-            24,
-            KSAUDIO_SPEAKER_STEREO,
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
-        }
-    },
-
-    //------------------------------------------------------------------------
-    // 192 KHz, 24-bit, 2 channels (Stereo)
-    //------------------------------------------------------------------------
-    {
-        {
-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
-            0,
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        {
-            {
-                WAVE_FORMAT_EXTENSIBLE,
-                2,
-                192000,
-                192000 * 2 * 3, // nAvgBytesPerSec = 192000 * channels * bytes_per_sample
-                2 * 3,          // nBlockAlign = channels * bytes_per_sample
-                24,
-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
-            },
-            24,
-            KSAUDIO_SPEAKER_STEREO,
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
-        }
-    },
-
-    //------------------------------------------------------------------------
-    // Example: 48 KHz, 32-bit float, 2 channels (Stereo)
-    //          Uses FLOAT subtype instead of PCM.
-    //------------------------------------------------------------------------
-    {
-        {
-            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
-            0,
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        {
-            {
-                WAVE_FORMAT_EXTENSIBLE,
-                2,
-                48000,
-                48000 * 2 * 4, // 4 bytes per float sample
-                2 * 4,         // nBlockAlign
-                32,            // wBitsPerSample
-                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
-            },
-            32,
-            KSAUDIO_SPEAKER_STEREO,
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
-        }
-    },
+static MODE_AND_DEFAULT_FORMAT MicArrayPinSupportedDeviceModes[] =
+{
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT, &MicArrayPinSupportedDeviceFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW, &MicArrayPinSupportedDeviceFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS, &MicArrayPinSupportedDeviceFormats[0].DataFormat },
 };
 
-//=============================================================================
-// Supported modes (only on streaming pins).
-// Add references to each format you want to expose in a particular mode.
-//=============================================================================
-static
-MODE_AND_DEFAULT_FORMAT MicArrayPinSupportedDeviceModes[] =
+static PIN_DEVICE_FORMATS_AND_MODES MicArrayPinDeviceFormatsAndModes[] =
 {
-    // If you only have one signal processing mode (e.g., RAW),
-    // you can list each supported format under it.
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW,
-        &MicArrayPinSupportedDeviceFormats[0].DataFormat
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW,
-        &MicArrayPinSupportedDeviceFormats[1].DataFormat
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW,
-        &MicArrayPinSupportedDeviceFormats[2].DataFormat
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW,
-        &MicArrayPinSupportedDeviceFormats[3].DataFormat
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW,
-        &MicArrayPinSupportedDeviceFormats[4].DataFormat
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW,
-        &MicArrayPinSupportedDeviceFormats[5].DataFormat
-    },
+    { BridgePin, NULL, 0, NULL, 0 },
+    { SystemCapturePin,
+      MicArrayPinSupportedDeviceFormats, SIZEOF_ARRAY(MicArrayPinSupportedDeviceFormats),
+      MicArrayPinSupportedDeviceModes, SIZEOF_ARRAY(MicArrayPinSupportedDeviceModes) }
 };
 
-//=============================================================================
-// Notes on extension:
-//
-// 1. Adjust nChannels, nSamplesPerSec, wBitsPerSample, and the SUBTYPE_GUID
-//    as appropriate. For example, floating-point (IEEE_FLOAT) is common for
-//    advanced processing or higher-fidelity capture.
-//
-// 2. If you have multiple signal processing modes (like RAW, Speech, etc.),
-//    you may add new MODE_AND_DEFAULT_FORMAT entries pointing to different
-//    subsets of the MicArrayPinSupportedDeviceFormats array.
-//
-// 3. Make sure the size of KSDATAFORMAT_WAVEFORMATEXTENSIBLE (DataFormat.FormatSize)
-//    matches the actual structure size, and that WAVEFORMATEXTENSIBLE is
-//    used properly (e.g., wValidBitsPerSample must align with wBitsPerSample).
-//
-// 4. The GUID for KSDATAFORMAT_SUBTYPE_PCM or KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
-//    must be used correctly if you are advertising PCM or float formats.
-//
-// 5. KSAUDIO_SPEAKER_STEREO is a standard channel mask for 2 channels.
-//    If you have more channels (e.g., 4, 5.1, 7.1), use the appropriate
-//    speaker channel masks (e.g. KSAUDIO_SPEAKER_5POINT1).
-//=============================================================================
+#define VMIC_DATA_RANGE(rate, bits, channels) \
+    { { sizeof(KSDATARANGE_AUDIO), KSDATARANGE_ATTRIBUTES, 0, 0, \
+        STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO), STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM), \
+        STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX) }, channels, bits, bits, rate, rate }
 
-
-//
-// The entries here must follow the same order as the filter's pin
-// descriptor array.
-//
-static
-PIN_DEVICE_FORMATS_AND_MODES MicArrayPinDeviceFormatsAndModes[] =
+static KSDATARANGE_AUDIO MicArrayPinDataRangesRawStream[] =
 {
-    {
-        BridgePin,
-        NULL,
-        0,
-        NULL,
-        0
-    },
-    {
-        SystemCapturePin,
-        MicArrayPinSupportedDeviceFormats,
-        SIZEOF_ARRAY(MicArrayPinSupportedDeviceFormats),
-        MicArrayPinSupportedDeviceModes,
-        SIZEOF_ARRAY(MicArrayPinSupportedDeviceModes)
-    }
+    VMIC_DATA_RANGE(48000, 16, 1),
+    VMIC_DATA_RANGE(44100, 16, 1),
+    VMIC_DATA_RANGE(96000, 24, 1),
+    VMIC_DATA_RANGE(192000, 24, 1),
+    VMIC_DATA_RANGE(48000, 32, 1),
+    VMIC_DATA_RANGE(48000, 16, 2),
+    VMIC_DATA_RANGE(44100, 16, 2),
+    VMIC_DATA_RANGE(96000, 24, 2),
+    VMIC_DATA_RANGE(192000, 24, 2),
+    VMIC_DATA_RANGE(48000, 32, 2),
 };
+#undef VMIC_DATA_RANGE
 
-//=============================================================================
-// Data ranges
-//
-// See CMiniportWaveRT::DataRangeIntersection.
-//
-static
-KSDATARANGE_AUDIO MicArrayPinDataRangesRawStream[] =
+static PKSDATARANGE MicArrayPinDataRangePointersStream[] =
 {
-    {
-        {
-            sizeof(KSDATARANGE_AUDIO),
-            KSDATARANGE_ATTRIBUTES,         // An attributes list follows this data range
-            0,
-            0,
-            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
-            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
-            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
-        },
-        MICARRAY_RAW_CHANNELS,
-        MICARRAY_32_BITS_PER_SAMPLE_PCM,
-        MICARRAY_32_BITS_PER_SAMPLE_PCM,
-        MICARRAY_RAW_SAMPLE_RATE,
-        MICARRAY_RAW_SAMPLE_RATE
-    },
-};
-
-static
-PKSDATARANGE MicArrayPinDataRangePointersStream[] =
-{
-    // All supported device formats should be listed in the DataRange.
     PKSDATARANGE(&MicArrayPinDataRangesRawStream[0]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[1]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[2]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[3]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[4]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[5]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[6]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[7]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[8]),
+    PKSDATARANGE(&PinDataRangeAttributeList),
+    PKSDATARANGE(&MicArrayPinDataRangesRawStream[9]),
     PKSDATARANGE(&PinDataRangeAttributeList),
 };
 

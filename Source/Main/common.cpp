@@ -18,6 +18,7 @@ Abstract:
 #include "hw.h"
 #include "savedata.h"
 #include "endpoints.h"
+#include "virtualmiccontrol.h"
 
 //-----------------------------------------------------------------------------
 // CSaveData statics
@@ -2102,6 +2103,7 @@ CAdapterCommon::Cleanup()
 {
     PAGED_CODE();
     DPF_ENTER(("[CAdapterCommon::Cleanup]"));
+    VmicRemoveControl();
     EmptySubdeviceCache();
 }
 

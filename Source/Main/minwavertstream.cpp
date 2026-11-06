@@ -4,6 +4,8 @@
 #include "endpoints.h"
 #include "minwavert.h"
 #include "minwavertstream.h"
+#include "virtualmiccontrol.h"
+#include "vmicbuffer.h"
 #define MINWAVERTSTREAM_POOLTAG 'SRWM'
 
 #pragma warning (disable : 4127)
@@ -33,6 +35,17 @@ Return Value:
 --*/
 {
     PAGED_CODE();
+    // Stop timer callbacks before releasing the stream state they access.
+    if (m_pNotificationTimer)
+    {
+        ExDeleteTimer(m_pNotificationTimer, TRUE, TRUE, NULL);
+        m_pNotificationTimer = NULL;
+    }
+    KeFlushQueuedDpcs();
+    if (m_bCapture)
+    {
+        VmicStopCapture(this);
+    }
     if (NULL != m_pMiniport)
     {
     
@@ -81,22 +94,6 @@ Return Value:
         ExFreePoolWithTag( m_pWfExt, MINWAVERTSTREAM_POOLTAG );
         m_pWfExt = NULL;
     }
-    if (m_pNotificationTimer)
-    {
-        ExDeleteTimer
-        (
-            m_pNotificationTimer, 
-            TRUE, // Cancel the timer if it is currently set.
-            TRUE, // Wait for the timer to finish expiring and for any callback to a ExTimerCallback routine to finish.
-            NULL
-         );
-    }
-
-    // Since we just cancelled the notification timer, wait for all queued 
-    // DPCs to complete before we free the notification DPC.
-    //
-    KeFlushQueuedDpcs();
-
     DPF_ENTER(("[CMiniportWaveRTStream::~CMiniportWaveRTStream]"));
 } // ~CMiniportWaveRTStream
 
@@ -523,6 +520,15 @@ NTSTATUS CMiniportWaveRTStream::AllocateBufferWithNotification
     //  A WaveRT miniport driver should not require software access to the audio buffer itself."
     //   
     m_pDmaBuffer = (BYTE*)m_pPortStream->MapAllocatedPages(pBufferMdl, MmCached);
+    if (!m_pDmaBuffer)
+    {
+        m_pPortStream->FreePagesFromMdl(pBufferMdl);
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    if (m_bCapture)
+    {
+        RtlZeroMemory(m_pDmaBuffer, RequestedSize_);
+    }
     m_ulNotificationsPerBuffer = NotificationCount_;
     m_ulDmaBufferSize = RequestedSize_;
     ulBufferDurationMs = (RequestedSize_ * 1000) / m_ulDmaMovementRate;
@@ -760,6 +766,15 @@ _Out_   MEMORY_CACHING_TYPE    *CacheType_
     //   
     m_pDmaBuffer = (BYTE*)m_pPortStream->MapAllocatedPages(pBufferMdl, MmCached);
 
+    if (!m_pDmaBuffer)
+    {
+        m_pPortStream->FreePagesFromMdl(pBufferMdl);
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    if (m_bCapture)
+    {
+        RtlZeroMemory(m_pDmaBuffer, RequestedSize_);
+    }
     m_ulDmaBufferSize = RequestedSize_;
     m_ulNotificationsPerBuffer = 0;
 
@@ -1177,6 +1192,10 @@ NTSTATUS CMiniportWaveRTStream::SetState
     switch (State_)
     {
         case KSSTATE_STOP:
+            if (m_bCapture)
+            {
+                VmicStopCapture(this);
+            }
             if (m_KsState == KSSTATE_ACQUIRE)
             {
                 // Acquire stream resources
@@ -1195,6 +1214,7 @@ NTSTATUS CMiniportWaveRTStream::SetState
             m_ulLastOsWritePacket = ULONG_MAX;
             m_bEoSReceived = FALSE;
             m_bLastBufferRendered = FALSE;
+            m_byteDisplacementCarryForward = 0;
 
             KeReleaseSpinLock(&m_PositionSpinLock, oldIrql);
 
@@ -1244,9 +1264,21 @@ NTSTATUS CMiniportWaveRTStream::SetState
             }
             // This call updates the linear buffer and presentation positions.
             GetPositions(NULL, NULL, NULL);
+            if (m_bCapture)
+            {
+                VmicStopCapture(this);
+            }
             break;
 
         case KSSTATE_RUN:
+            if (m_bCapture)
+            {
+                ntStatus = VmicStartCapture(this, &m_pWfExt->Format);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    return ntStatus;
+                }
+            }
             // Start DMA
             LARGE_INTEGER ullPerfCounterTemp;
             ullPerfCounterTemp = KeQueryPerformanceCounter(&m_ullPerformanceCounterFrequency);
@@ -1304,35 +1336,43 @@ VOID CMiniportWaveRTStream::UpdatePosition
     _In_ LARGE_INTEGER ilQPC
 )
 {
+    if (!m_ulDmaBufferSize)
+    {
+        return;
+    }
     // Convert ticks to 100ns units.
     LONGLONG  hnsCurrentTime = KSCONVERT_PERFORMANCE_TIME(m_ullPerformanceCounterFrequency.QuadPart, ilQPC);
     
-    // Calculate the time elapsed since the last call to GetPosition() or since the
-    // DMA engine started.  Note that the division by 10000 to convert to milliseconds
-    // may cause us to lose some of the time, so we will carry the remainder forward 
-    // to the next GetPosition() call.
-    //
-    ULONG TimeElapsedInMS = (ULONG)(hnsCurrentTime - m_ullDmaTimeStamp + m_hnsElapsedTimeCarryForward)/10000;
-    
-    // Carry forward the remainder of this division so we don't fall behind with our position too much.
-    //
-    m_hnsElapsedTimeCarryForward = (hnsCurrentTime - m_ullDmaTimeStamp + m_hnsElapsedTimeCarryForward) % 10000;
-    
-    // Calculate how many bytes in the DMA buffer would have been processed in the elapsed
-    // time.  Note that the division by 1000 to convert to milliseconds may cause us to 
-    // lose some bytes, so we will carry the remainder forward to the next GetPosition() call.
-    //
-    // need to divide by 1000 because m_ulDmaMovementRate is average bytes per sec.
-
-    ULONG ByteDisplacement = ((m_ulDmaMovementRate * TimeElapsedInMS) + m_byteDisplacementCarryForward) / 1000 ;
-    m_byteDisplacementCarryForward = ((m_ulDmaMovementRate * TimeElapsedInMS) + m_byteDisplacementCarryForward) % 1000;
+    const ULONGLONG elapsed = hnsCurrentTime > static_cast<LONGLONG>(m_ullDmaTimeStamp)
+        ? hnsCurrentTime - m_ullDmaTimeStamp : 0;
+    const ULONGLONG moved = VmicElapsedFrames(elapsed, m_pWfExt->Format.nSamplesPerSec,
+        &m_byteDisplacementCarryForward) * m_pWfExt->Format.nBlockAlign;
+    m_hnsElapsedTimeCarryForward = m_byteDisplacementCarryForward / m_pWfExt->Format.nSamplesPerSec;
+    ULONGLONG skipped = 0;
+    ULONG ByteDisplacement;
+    if (moved > m_ulDmaBufferSize)
+    {
+        // After a VM pause, process only the final DMA buffer instead of replaying stale audio.
+        skipped = moved - m_ulDmaBufferSize;
+        m_ullLinearPosition += skipped;
+        m_ullWritePosition = (m_ullWritePosition + skipped) % m_ulDmaBufferSize;
+        if (m_bCapture)
+        {
+            const ULONG staleBytes = static_cast<ULONG>(min(skipped, static_cast<ULONGLONG>(VMIC_BUFFER_BYTES)));
+            VmicReadCapture(this, NULL, staleBytes - staleBytes % m_pWfExt->Format.nBlockAlign);
+        }
+        ByteDisplacement = m_ulDmaBufferSize;
+    }
+    else
+    {
+        ByteDisplacement = static_cast<ULONG>(moved);
+    }
 
     // Increment presentation position even after last buffer is rendered.
-    m_ullPresentationPosition += ByteDisplacement;
+    m_ullPresentationPosition += skipped + ByteDisplacement;
 
     if (m_bCapture)
     {
-        // Write sine wave to buffer.
         WriteBytes(ByteDisplacement);
     }
     else
@@ -1397,7 +1437,7 @@ VOID CMiniportWaveRTStream::WriteBytes
 
 Routine Description:
 
-This function writes the audio buffer using silence instead of a tone generator
+This function supplies application PCM and fills missing frames with silence.
 
 Arguments:
 
@@ -1412,9 +1452,10 @@ ByteDisplacement - # of bytes to process.
     while (ByteDisplacement > 0)
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
+        const ULONG maxCopy = VMIC_MAX_PACKET_BYTES - VMIC_MAX_PACKET_BYTES % m_pWfExt->Format.nBlockAlign;
+        runWrite = min(runWrite, maxCopy);
         
-        // Instead of generating a tone, just output silence
-        RtlZeroMemory(m_pDmaBuffer + bufferOffset, runWrite);
+        VmicReadCapture(this, m_pDmaBuffer + bufferOffset, runWrite);
            	
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
@@ -1554,6 +1595,7 @@ TimerNotifyRT
     LARGE_INTEGER qpc;
     LARGE_INTEGER qpcFrequency;
     BOOL bufferCompleted = FALSE;
+    ULONG TimeElapsedInMS = 0;
 
     UNREFERENCED_PARAMETER(Timer);
 
@@ -1577,7 +1619,25 @@ TimerNotifyRT
     // Calculate the time elapsed since the last we ran DPC that matched Notification interval. Note that the division by 10000 
     // to convert to milliseconds may cause us to lose some of the time, so we will carry the remainder forward.
 
-    ULONG TimeElapsedInMS = (ULONG)(hnsCurrentTime - _this->m_ullLastDPCTimeStamp + _this->m_hnsDPCTimeCarryForward)/10000;
+    if (_this->m_bCapture)
+    {
+        if (_this->m_KsState != KSSTATE_RUN || !_this->m_ulDmaBufferSize || !_this->m_ulNotificationsPerBuffer)
+        {
+            goto End;
+        }
+        _this->UpdatePosition(qpc);
+        const LONGLONG completed = _this->m_ullLinearPosition /
+            (_this->m_ulDmaBufferSize / _this->m_ulNotificationsPerBuffer);
+        bufferCompleted = completed > _this->m_llPacketCounter;
+        _this->m_llPacketCounter = completed;
+        if (!bufferCompleted)
+        {
+            goto End;
+        }
+        goto Notify;
+    }
+
+    TimeElapsedInMS = (ULONG)(hnsCurrentTime - _this->m_ullLastDPCTimeStamp + _this->m_hnsDPCTimeCarryForward)/10000;
 
     if (TimeElapsedInMS >= _this->m_ulNotificationIntervalMs)
     {
@@ -1600,6 +1660,7 @@ TimerNotifyRT
         _this->m_llPacketCounter++;
     }
 
+Notify:
     if (_this->m_KsState != KSSTATE_RUN)
     {
         goto End;
@@ -1608,7 +1669,7 @@ TimerNotifyRT
     PADAPTERCOMMON  pAdapterComm = _this->m_pMiniport->GetAdapterCommObj();
 
     // Simple buffer underrun detection.
-    if (!_this->IsCurrentWaveRTWritePositionUpdated() && !_this->m_bEoSReceived)
+    if (!_this->m_bCapture && !_this->IsCurrentWaveRTWritePositionUpdated() && !_this->m_bEoSReceived)
     {
         //Event type: eMINIPORT_GLITCH_REPORT
         //Parameter 1: Current linear buffer position 

@@ -2,9 +2,17 @@
 > This software is in beta and requires test signing to be enabled.
 
 > [!NOTE]
-> Software Developers/Organizations: Looking to implement Virtual speakers/mics into your app? For advanced/custom functionality like named pipes, shared memory buffers (for no-latency audio), direct integration with your existing apps, and more; Contact us for quotes on a custom build! contact@mikethetech.com
+> Application developers: this checkout includes a direct PCM injection API and Rust Core/Demo.
 
 # Virtual Audio Driver by MikeTheTech
+
+## Direct application audio injection
+
+This checkout adds a versioned application interface for writing PCM directly into **Virtual Mic Driver by MTT**. The Rust Core crate provides strict writes and automatic sample-rate, bit-depth, and channel conversion; its CLI demo can send test tones or WAV files and verify the result through WASAPI capture.
+
+The microphone supports mono and stereo integer PCM at 16-bit/44.1 kHz, 16-bit/48 kHz, 24-bit/96 kHz, 24-bit/192 kHz, and 32-bit/48 kHz. The default capture format is mono 16-bit/48 kHz.
+
+The Rust client workspace provides the user-mode API and CLI demo. Build and test-sign the driver with `tools\Build-VirtualMic.ps1 -Configuration Release -TestSign`; install it in a test-signing-enabled Windows VM with `tools\Install-VirtualMic.ps1` from an administrator PowerShell session.
 
 Welcome to the **Virtual Audio Driver by MikeTheTech**! This project provides two key drivers based on the Windows Driver Kit (WDK):
 
@@ -41,7 +49,7 @@ By installing these drivers, you can process or forward audio without physical h
 | **Supported Audio Formats**                  | **8-bit, 8000 Hz** (lowest quality) up to **32-bit, 192,000 Hz** (studio quality). This includes various presets such as Telephone Quality (8-bit, 11025 Hz) and DVD/Studio Quality (16/24/32-bit, up to 192 kHz). | **16-bit 44,100 Hz**, **16-bit 48,000 Hz**, **24-bit 96,000 Hz**, **24-bit 192,000 Hz**, **32-bit 48,000 Hz** (for testing or specialized scenarios). |
 | **Spatial Sound Support** (Speaker Only)     | Integrates with Windows Sonic, enabling immersive 3D audio features.                                                                                                                      | Integrated with Audio Enhancements such as Voice Focus and Background Noise Reduction.                                                          |
 | **Exclusive Mode and App Priority**          | Applications can claim exclusive control of the device.                                                                                                                                  | Same WDK architecture applies, allowing exclusive access in supported workflows.                                                                 |
-| **Volume Level Handling**                    | Handles global and per-application volume changes (Windows mixer).                                                                                                                        | Microphone level adjustments accessible via Windows Sound Settings or audio software.                                                            |
+| **Volume Level Handling**                    | Handles global and per-application volume changes (Windows mixer).                                                                                                                        | PCM gain and silence are controlled by the injecting application.                                                            |
 | **High Customizability**                     | Built to be extended with future features and audio enhancements.                                                                                                                         | Allows flexible configuration of sampling rates and bit depths for specialized audio requirements.                                               |
 
 ---
@@ -115,8 +123,8 @@ By installing these drivers, you can process or forward audio without physical h
    - **Audio Testing**: Confirm that your software or game engine’s microphone-handling logic works without real hardware.
 
 4. **Volume & Level Controls**  
-   - Adjust input levels in **Sound Settings** → **Recording** tab.  
-   - Per-app mic levels can be configured in certain software or system volume mixers (where supported).
+   - For direct PCM injection, apply gain and mute in the sending application; the original sample topology controls are not applied to injected PCM.
+   - Stop sending to produce silence; clear the application queue when muting immediately.
 
 ---
 

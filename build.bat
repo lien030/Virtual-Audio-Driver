@@ -16,13 +16,13 @@ if %errorlevel% equ 0 (
 :: MSBuild not in PATH, search common locations
 echo MSBuild not found in PATH, searching common locations...
 
-set MSBUILD_PATHS[0]=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe
-set MSBUILD_PATHS[1]=C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe
-set MSBUILD_PATHS[2]=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe
-set MSBUILD_PATHS[3]=C:\Program Files\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\MSBuild.exe
-set MSBUILD_PATHS[4]=C:\Program Files\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\MSBuild.exe
-set MSBUILD_PATHS[5]=C:\Program Files\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe
-set MSBUILD_PATHS[6]=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe
+set MSBUILD_PATHS[0]=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\MSBuild.exe
+set MSBUILD_PATHS[1]=C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\amd64\MSBuild.exe
+set MSBUILD_PATHS[2]=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\amd64\MSBuild.exe
+set MSBUILD_PATHS[3]=C:\Program Files\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\amd64\MSBuild.exe
+set MSBUILD_PATHS[4]=C:\Program Files\Microsoft Visual Studio\2019\Professional\MSBuild\Current\Bin\amd64\MSBuild.exe
+set MSBUILD_PATHS[5]=C:\Program Files\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\amd64\MSBuild.exe
+set MSBUILD_PATHS[6]=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe
 set MSBUILD_PATHS[7]=C:\Program Files (x86)\MSBuild\14.0\Bin\MSBuild.exe
 
 set MSBUILD_EXE=

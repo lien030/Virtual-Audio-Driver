@@ -221,8 +221,7 @@ Arguments:
         return STATUS_NOT_IMPLEMENTED;
     }
 
-    //If called for the mic array pin, set ResultantFormat to be the endpoint's only supported format.
-    //Otherwise, allow the class handler to set ResultantFormat.  
+    // Select a supported microphone format; other endpoints use the class handler.
     if ((this->m_DeviceType) == eMicArrayDevice1)
     {
         requiredSize = sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE);
@@ -242,13 +241,38 @@ Arguments:
             return STATUS_BUFFER_TOO_SMALL;
         }
 
-        //Set ResultantFormat to be the only supported format for the MicArray endpoint. 
-        PKSDATAFORMAT_WAVEFORMATEXTENSIBLE resultantFormat;
-        resultantFormat = (PKSDATAFORMAT_WAVEFORMATEXTENSIBLE)ResultantFormat;
-        *resultantFormat = *MicArrayPinSupportedDeviceFormats;
-        *ResultantFormatLength = requiredSize;
-
-        return STATUS_SUCCESS;
+        if (ClientDataRange->FormatSize < sizeof(KSDATARANGE_AUDIO) ||
+            MyDataRange->FormatSize < sizeof(KSDATARANGE_AUDIO))
+        {
+            return STATUS_NO_MATCH;
+        }
+        const auto client = reinterpret_cast<const KSDATARANGE_AUDIO*>(ClientDataRange);
+        const auto own = reinterpret_cast<const KSDATARANGE_AUDIO*>(MyDataRange);
+        if (!IsEqualGUIDAligned(ClientDataRange->SubFormat, KSDATAFORMAT_SUBTYPE_PCM) &&
+            !IsEqualGUIDAligned(ClientDataRange->SubFormat, KSDATAFORMAT_SUBTYPE_WILDCARD))
+        {
+            return STATUS_NO_MATCH;
+        }
+        for (const auto& format : MicArrayPinSupportedDeviceFormats)
+        {
+            const auto& wave = format.WaveFormatExt.Format;
+            if (wave.nChannels > client->MaximumChannels || wave.nChannels > own->MaximumChannels ||
+                wave.nSamplesPerSec < client->MinimumSampleFrequency ||
+                wave.nSamplesPerSec > client->MaximumSampleFrequency ||
+                wave.nSamplesPerSec < own->MinimumSampleFrequency ||
+                wave.nSamplesPerSec > own->MaximumSampleFrequency ||
+                wave.wBitsPerSample < client->MinimumBitsPerSample ||
+                wave.wBitsPerSample > client->MaximumBitsPerSample ||
+                wave.wBitsPerSample < own->MinimumBitsPerSample ||
+                wave.wBitsPerSample > own->MaximumBitsPerSample)
+            {
+                continue;
+            }
+            *static_cast<PKSDATAFORMAT_WAVEFORMATEXTENSIBLE>(ResultantFormat) = format;
+            *ResultantFormatLength = requiredSize;
+            return STATUS_SUCCESS;
+        }
+        return STATUS_NO_MATCH;
     }
     else
     {
@@ -1094,6 +1118,12 @@ CMiniportWaveRT::IsFormatSupported
 
     UNREFERENCED_PARAMETER(_bCapture);
 
+    const ULONG waveFormatPrefix = sizeof(KSDATAFORMAT) + sizeof(WAVEFORMATEX);
+    if (_pDataFormat->FormatSize < waveFormatPrefix)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
     if (_ulPin >= m_pMiniportPair->WaveDescriptor->PinCount)
     {
         return STATUS_INVALID_PARAMETER;
@@ -1112,6 +1142,10 @@ CMiniportWaveRT::IsFormatSupported
 
         // WAVEFORMATEX VALIDATION
         PWAVEFORMATEX pWaveFormat = reinterpret_cast<PWAVEFORMATEX>(_pDataFormat + 1);
+        if (pWaveFormat->cbSize > _pDataFormat->FormatSize - waveFormatPrefix)
+        {
+            return STATUS_INVALID_PARAMETER;
+        }
         
         if (pWaveFormat->wFormatTag != WAVE_FORMAT_EXTENSIBLE)
         {
@@ -1120,6 +1154,7 @@ CMiniportWaveRT::IsFormatSupported
         if (pWaveFormat->nChannels  != pFormat->WaveFormatExt.Format.nChannels) { continue; }
         if (pWaveFormat->nSamplesPerSec != pFormat->WaveFormatExt.Format.nSamplesPerSec) { continue; }
         if (pWaveFormat->nBlockAlign != pFormat->WaveFormatExt.Format.nBlockAlign) { continue; }
+        if (pWaveFormat->nAvgBytesPerSec != pFormat->WaveFormatExt.Format.nAvgBytesPerSec) { continue; }
         if (pWaveFormat->wBitsPerSample != pFormat->WaveFormatExt.Format.wBitsPerSample) { continue; }
         if (pWaveFormat->wFormatTag != WAVE_FORMAT_EXTENSIBLE)
         {
@@ -1128,7 +1163,8 @@ CMiniportWaveRT::IsFormatSupported
         }
 
         // WAVEFORMATEXTENSIBLE VALIDATION
-        if (pWaveFormat->cbSize < sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) { continue; }
+        if (_pDataFormat->FormatSize < sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE) ||
+            pWaveFormat->cbSize < sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) { continue; }
 
         PWAVEFORMATEXTENSIBLE pWaveFormatExt = reinterpret_cast<PWAVEFORMATEXTENSIBLE>(pWaveFormat);
         if (pWaveFormatExt->Samples.wValidBitsPerSample != pFormat->WaveFormatExt.Samples.wValidBitsPerSample) { continue; }

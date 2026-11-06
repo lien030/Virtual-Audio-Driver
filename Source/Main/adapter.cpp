@@ -22,6 +22,7 @@ Abstract:
 #include "definitions.h"
 #include "endpoints.h"
 #include "minipairs.h"
+#include "virtualmiccontrol.h"
 
 typedef void (*fnPcDriverUnload) (PDRIVER_OBJECT);
 fnPcDriverUnload gPCDriverUnloadRoutine = NULL;
@@ -339,6 +340,7 @@ Return Value:
     // To intercept stop/remove/surprise-remove.
     //
     DriverObject->MajorFunction[IRP_MJ_PNP] = PnpHandler;
+    VmicInstallDispatch(DriverObject);
 
     //
     // Hook the port class unload function
@@ -749,6 +751,9 @@ Return Value:
     // Install wave+topology filters for capture devices
     //
     ntStatus = InstallAllCaptureFilters(DeviceObject, Irp, pAdapterCommon);
+    IF_FAILED_JUMP(ntStatus, Exit);
+
+    ntStatus = VmicCreateControl(DeviceObject);
     IF_FAILED_JUMP(ntStatus, Exit);
 
 Exit:

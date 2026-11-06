@@ -12,7 +12,7 @@ This checkout adds a versioned application interface for writing PCM directly in
 
 The microphone supports mono and stereo integer PCM at 16-bit/44.1 kHz, 16-bit/48 kHz, 24-bit/96 kHz, 24-bit/192 kHz, and 32-bit/48 kHz. The default capture format is mono 16-bit/48 kHz.
 
-The Rust client workspace provides the user-mode API and CLI demo. Build and test-sign the driver with `tools\Build-VirtualMic.ps1 -Configuration Release -TestSign`; install it in a test-signing-enabled Windows VM with `tools\Install-VirtualMic.ps1` from an administrator PowerShell session.
+The [Virtual Mic Client](https://github.com/lien030/virtual-mic-client) workspace provides the user-mode Rust API and CLI demo. Build and test-sign the driver with `tools\Build-VirtualMic.ps1 -Configuration Release -TestSign`; install it in a test-signing-enabled Windows VM with `tools\Install-VirtualMic.ps1` from an administrator PowerShell session.
 
 Welcome to the **Virtual Audio Driver by MikeTheTech**! This project provides two key drivers based on the Windows Driver Kit (WDK):
 

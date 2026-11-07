@@ -27,7 +27,11 @@ try {
     & (Join-Path $bin 'cl.exe') /nologo /EHsc /W4 /WX /MT (Join-Path $driverRoot 'Tests\vmic_stream_test.cpp') `
         "/Fe:$streamExe" "/Fo:$output\vmic_stream_test.obj" /link setupapi.lib ksuser.lib
     if ($LASTEXITCODE -ne 0) { throw 'Stream test compilation failed.' }
-    "Built $streamExe; run it in the Windows test VM with the driver installed."
+    $endpointExe = Join-Path $output 'vmic_endpoint_test.exe'
+    & (Join-Path $bin 'cl.exe') /nologo /EHsc /W4 /WX /MT (Join-Path $driverRoot 'Tests\vmic_endpoint_test.cpp') `
+        "/Fe:$endpointExe" "/Fo:$output\vmic_endpoint_test.obj" /link ole32.lib
+    if ($LASTEXITCODE -ne 0) { throw 'Endpoint test compilation failed.' }
+    "Built $streamExe and $endpointExe; run them in the Windows test VM with the driver installed."
 } finally {
     $env:Path = $originalPath
     $env:INCLUDE = $originalInclude

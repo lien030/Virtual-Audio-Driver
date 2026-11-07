@@ -16,7 +16,7 @@ $demo = Join-Path $RustRoot 'target\release\virtual-mic-demo.exe'
 $files = @('VirtualAudioDriver.inf', 'VirtualAudioDriver.sys', 'virtualaudiodriver.cat', 'VirtualMicTest.cer') |
     ForEach-Object { Join-Path $package $_ }
 $files += @((Join-Path $PSScriptRoot 'Install-VirtualMic.ps1'), $demo,
-    (Join-Path $driverRoot 'x64\Tests\vmic_stream_test.exe'))
+    (Join-Path $driverRoot 'x64\Tests\vmic_stream_test.exe'), (Join-Path $driverRoot 'x64\Tests\vmic_endpoint_test.exe'))
 $sdkTools = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Tools'
 $devcon = Get-ChildItem -LiteralPath $sdkTools -Directory | Where-Object { $_.Name -match '^\d+\.' } |
     Sort-Object { [version]$_.Name } -Descending | ForEach-Object { Join-Path $_.FullName 'x64\devcon.exe' } |
@@ -44,6 +44,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Driver status query failed.' }
     & C:\VirtualMicTest\vmic_stream_test.exe
     if ($LASTEXITCODE -ne 0) { throw 'WaveRT stream regression failed.' }
+    & C:\VirtualMicTest\vmic_endpoint_test.exe
+    if ($LASTEXITCODE -ne 0) { throw 'Endpoint mute or shared-mode regression failed.' }
 } finally { Stop-Transcript }
 '@
 $localScript = Join-Path $driverRoot 'x64\Release\install-vm.ps1'

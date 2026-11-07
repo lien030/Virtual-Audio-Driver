@@ -35,9 +35,8 @@ static KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicArrayPinSupportedDeviceFormats[] =
 
 static MODE_AND_DEFAULT_FORMAT MicArrayPinSupportedDeviceModes[] =
 {
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT, &MicArrayPinSupportedDeviceFormats[0].DataFormat },
+    // One mode only: Windows opens a pin per active mode, and the injection buffer feeds one stream.
     { STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW, &MicArrayPinSupportedDeviceFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS, &MicArrayPinSupportedDeviceFormats[0].DataFormat },
 };
 
 static PIN_DEVICE_FORMATS_AND_MODES MicArrayPinDeviceFormatsAndModes[] =

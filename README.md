@@ -12,7 +12,7 @@ This checkout adds a versioned application interface for writing PCM directly in
 
 The microphone supports mono and stereo integer PCM at 16-bit/44.1 kHz, 16-bit/48 kHz, 24-bit/96 kHz, 24-bit/192 kHz, and 32-bit/48 kHz. The default capture format is mono 16-bit/48 kHz.
 
-The [Virtual Mic Client](https://github.com/lien030/virtual-mic-client) workspace provides the user-mode Rust API and CLI demo. Build and test-sign the driver with `tools\Build-VirtualMic.ps1 -Configuration Release -TestSign`; install it in a test-signing-enabled Windows VM with `tools\Install-VirtualMic.ps1` from an administrator PowerShell session.
+The [Virtual Mic Client](https://github.com/lien030/virtual-mic-client) workspace provides the user-mode Rust API and CLI demo. Build and test-sign the driver with `tools\Build-VirtualMic.ps1 -Configuration Release -TestSign`. To install it, copy the files in `x64\Release\package`, `tools\Install-VirtualMic.ps1`, and the WDK x64 `devcon.exe` into one folder on a test-signing-enabled Windows VM, then run `.\Install-VirtualMic.ps1` there from an administrator PowerShell session.
 
 Welcome to the **Virtual Audio Driver by MikeTheTech**! This project provides two key drivers based on the Windows Driver Kit (WDK):
 
@@ -49,7 +49,7 @@ By installing these drivers, you can process or forward audio without physical h
 | **Supported Audio Formats**                  | **8-bit, 8000 Hz** (lowest quality) up to **32-bit, 192,000 Hz** (studio quality). This includes various presets such as Telephone Quality (8-bit, 11025 Hz) and DVD/Studio Quality (16/24/32-bit, up to 192 kHz). | **16-bit 44,100 Hz**, **16-bit 48,000 Hz**, **24-bit 96,000 Hz**, **24-bit 192,000 Hz**, **32-bit 48,000 Hz** (for testing or specialized scenarios). |
 | **Spatial Sound Support** (Speaker Only)     | Integrates with Windows Sonic, enabling immersive 3D audio features.                                                                                                                      | Integrated with Audio Enhancements such as Voice Focus and Background Noise Reduction.                                                          |
 | **Exclusive Mode and App Priority**          | Applications can claim exclusive control of the device.                                                                                                                                  | Same WDK architecture applies, allowing exclusive access in supported workflows.                                                                 |
-| **Volume Level Handling**                    | Handles global and per-application volume changes (Windows mixer).                                                                                                                        | PCM gain and silence are controlled by the injecting application.                                                            |
+| **Volume Level Handling**                    | Handles global and per-application volume changes (Windows mixer).                                                                                                                        | Windows applies the microphone level and mute to shared-mode apps; exclusive-mode apps receive the injected PCM unchanged.    |
 | **High Customizability**                     | Built to be extended with future features and audio enhancements.                                                                                                                         | Allows flexible configuration of sampling rates and bit depths for specialized audio requirements.                                               |
 
 ---
@@ -123,8 +123,8 @@ By installing these drivers, you can process or forward audio without physical h
    - **Audio Testing**: Confirm that your software or game engine’s microphone-handling logic works without real hardware.
 
 4. **Volume & Level Controls**  
-   - For direct PCM injection, apply gain and mute in the sending application; the original sample topology controls are not applied to injected PCM.
-   - Stop sending to produce silence; clear the application queue when muting immediately.
+   - Windows applies the Virtual Mic level and mute (**Sound Settings** → **Recording**) to shared-mode apps such as conferencing and streaming software. Exclusive-mode apps receive the injected PCM unchanged.
+   - Stop sending to produce silence; clear the application queue to cut queued audio immediately.
 
 ---
 

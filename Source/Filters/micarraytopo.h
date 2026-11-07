@@ -92,6 +92,5 @@ CreateMicArrayMiniportTopology(
 );
 
 NTSTATUS PropertyHandler_MicArrayTopoFilter(_In_ PPCPROPERTY_REQUEST PropertyRequest);
-NTSTATUS PropertyHandler_MicArrayTopology(_In_ PPCPROPERTY_REQUEST PropertyRequest);
 
 #endif // _VIRTUALAUDIODRIVER_MICARRAYTOPO_H_

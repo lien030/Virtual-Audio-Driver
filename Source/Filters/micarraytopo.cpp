@@ -785,40 +785,4 @@ Return Value:
     return ntStatus;
 } // PropertyHandler_TopoFilter
 
-//=============================================================================
-NTSTATUS
-PropertyHandler_MicArrayTopology
-(
-    _In_ PPCPROPERTY_REQUEST      PropertyRequest
-)
-/*++
-
-Routine Description:
-
-  Redirects property request to miniport object
-
-Arguments:
-
-  PropertyRequest -
-
-Return Value:
-
-  NT status code.
-
---*/
-{
-    PAGED_CODE();
-
-    ASSERT(PropertyRequest);
-
-    DPF_ENTER(("[PropertyHandler_MicArrayTopology]"));
-
-    // PropertryRequest structure is filled by portcls. 
-    // MajorTarget is a pointer to miniport object for miniports.
-    //
-    PCMicArrayMiniportTopology pMiniport = (PCMicArrayMiniportTopology)PropertyRequest->MajorTarget;
-
-    return pMiniport->PropertyHandlerGeneric(PropertyRequest);
-} // PropertyHandler_MicArrayTopology
-
 #pragma code_seg()

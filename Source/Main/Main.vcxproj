@@ -78,6 +78,13 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
   </ImportGroup>
   <ItemGroup Label="WrappedTaskItems" />
+  <ItemDefinitionGroup>
+    <Link>
+      <!-- Embed only the PDB file name, not the local build path.
+           shortcut: Debug builds still embed source paths through __FILE__; share only Release packages. -->
+      <AdditionalOptions>%(AdditionalOptions) /PDBALTPATH:%25_PDB%25</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies);$(DDK_LIB_PATH)\portcls.lib;$(DDK_LIB_PATH)\stdunk.lib;$(DDK_LIB_PATH)\libcntpr.lib</AdditionalDependencies>
